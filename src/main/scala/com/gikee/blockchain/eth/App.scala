@@ -1,9 +1,13 @@
 package com.gikee.blockchain.eth
 
 /**
- * Hello world!
- *
- */
-object App extends Application {
-  println( "Hello World!" )
+  * Hello world!
+  *
+  */
+object App {
+
+  def main(args: Array[String]): Unit = {
+    println("Hello World!")
+  }
+
 }
