@@ -1,4 +1,4 @@
-package com.gikee.blockchain.eth
+package com.gikee.eth
 
 /**
   * Hello world!
