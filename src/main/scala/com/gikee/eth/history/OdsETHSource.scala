@@ -5,21 +5,22 @@ import com.gikee.util.TableUtil
 import org.apache.spark.sql.SparkSession
 
 /**
-  * 每天更新 ODS ETH Source
+  * eth data source by lucas 20181114
   */
 object OdsETHSource {
 
-  var readStageDataBase, readStageTableName, writeDataBase, writeTableName, transactionDate: String = _
+  var readOdsDataBase, readOdsTableName, writeDataBase, writeTableName, dateMonthly, dateTime: String = _
 
   def main(args: Array[String]): Unit = {
 
     val spark = SparkSession.builder().enableHiveSupport().getOrCreate()
 
-    readStageDataBase = spark.sparkContext.getConf.get("spark.odsETHSource.readStageDataBase")
-    readStageTableName = spark.sparkContext.getConf.get("spark.odsETHSource.readStageTableName")
+    readOdsDataBase = spark.sparkContext.getConf.get("spark.odsETHSource.readOdsDataBase")
+    readOdsTableName = spark.sparkContext.getConf.get("spark.odsETHSource.readOdsTableName")
     writeDataBase = spark.sparkContext.getConf.get("spark.odsETHSource.writeDataBase")
     writeTableName = spark.sparkContext.getConf.get("spark.odsETHSource.writeTableName")
-    transactionDate = spark.sparkContext.getConf.get("spark.odsETHSource.transactionDate")
+    dateMonthly = spark.sparkContext.getConf.get("spark.odsETHSource.transactionMonthly")
+    dateTime = spark.sparkContext.getConf.get("spark.odsETHSource.transactionDate")
 
     getOdsETHSource(spark)
 
@@ -38,9 +39,10 @@ object OdsETHSource {
       throw new IllegalArgumentException("tmpPath or targetPath is null")
     }
 
-    val targetDF = spark.read.table(s"${readStageDataBase}.${readStageTableName}")
-      .where(s" transaction_date = '${transactionDate}' ")
-      .select("info","block_number","date_time","transaction_date")
+    val query_sql = if (dateMonthly != "") s" transaction_date rlike '${dateMonthly}' " else s" transaction_date = '${dateTime}' "
+
+    val targetDF = spark.read.table(s"${readOdsDataBase}.${readOdsTableName}").where(query_sql)
+      .select("info", "block_number", "date_time", "transaction_date")
 
     TableUtil.writeDataStream(spark, targetDF, prefixPath, tmpPath, targetPath, "transaction_date")
     TableUtil.refreshPartition(spark, targetDF, writeDataBase, writeTableName, "transaction_date")

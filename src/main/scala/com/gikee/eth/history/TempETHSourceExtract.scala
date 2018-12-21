@@ -3,7 +3,7 @@ package com.gikee.eth.ods
 import com.alibaba.fastjson.JSON
 import com.gikee.common.{CommonConstant, PerfLogging}
 import com.gikee.util.{ParsingJson, TableUtil}
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{SaveMode, SparkSession}
 
 /**
   * 从 eth 原始文件中提取日期，
@@ -52,10 +52,12 @@ object TempETHSourceExtract {
       val date_time = timeTuple._1
       val transaction_date = timeTuple._5
       (infoJson.toJSONString, block_number, date_time, dir, transaction_date)
-    }).toDF("info", "block_number", "date_time", "dir", "transaction_date")
+    }).toDF("info", "block_number", "date_time", "dir", "transaction_date").repartition(10)
+
+//    targetDF.repartition(1).write.mode(SaveMode.Append).format("parquet")
+//      .insertInto(s"${writeDataBase}.${writeTableName}")
 
     TableUtil.writeDataStream(spark, targetDF, prefixPath, tmpPath, targetPath, "dir", "transaction_date")
-
     TableUtil.refreshPartition(spark, targetDF, writeDataBase, writeTableName, "dir", "transaction_date")
 
   }
