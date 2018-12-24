@@ -1,4 +1,4 @@
-package com.gikee.eth.ods
+package com.gikee.eth.history
 
 import com.gikee.common.{CommonConstant, PerfLogging}
 import com.gikee.util.TableUtil
@@ -42,7 +42,7 @@ object OdsETHSource {
     val query_sql = if (dateMonthly != "") s" transaction_date rlike '${dateMonthly}' " else s" transaction_date = '${dateTime}' "
 
     val targetDF = spark.read.table(s"${readOdsDataBase}.${readOdsTableName}").where(query_sql)
-      .select("info", "block_number", "date_time", "transaction_date")
+      .selectExpr("info", "block_number","substr(date_time,12,2) as dh", "date_time", "transaction_date")
 
     TableUtil.writeDataStream(spark, targetDF, prefixPath, tmpPath, targetPath, "transaction_date")
     TableUtil.refreshPartition(spark, targetDF, writeDataBase, writeTableName, "transaction_date")

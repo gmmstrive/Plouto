@@ -45,22 +45,20 @@ object DmETHTokenPrice {
       .options(Map(
         "url" -> s"jdbc:mysql://106.14.200.2:3306/${mysqlDataBase}",
         "driver" -> "com.mysql.jdbc.Driver",
-        "dbtable" -> s"${mysqlTableName}",
+        //"dbtable" -> s"${mysqlTableName}",
+        "dbtable" -> s"(select id, symbol, priceUs, time from ${mysqlTableName} where time = '${dateTime}' and priceUs > '0.0' ) as coinEverydayInfo",
         "user" -> "lyjm_data",
         "password" -> "lyjm_python"
-      )).load().selectExpr("id", "symbol as token_symbol", "priceUs as price_us", "time as transaction_date").rdd.map(x => {
+      )).load().rdd.map(x => {
       val id = x.get(0).toString
       val token_symbol = x.get(1).toString
       val price_us = BigDecimal(x.get(2).toString).bigDecimal.toPlainString
       val transaction_date = x.get(3).toString
       (id, token_symbol, price_us, transaction_date)
     }).toDF("id", "token_symbol", "price_us", "transaction_date")
+    //.where(" price_us > '0.0' ")
 
-    if (dateTime != "") {
-      TableUtil.writeDataStream(spark, targetDF.where(s"transaction_date = '${dateTime}'"), prefixPath, tmpPath, targetPath, "transaction_date")
-    } else {
-      TableUtil.writeDataStream(spark, targetDF, prefixPath, tmpPath, targetPath, "transaction_date")
-    }
+    TableUtil.writeDataStream(spark, targetDF, prefixPath, tmpPath, targetPath, "transaction_date")
 
     TableUtil.refreshPartition(spark, targetDF, writeDataBase, writeTableName, "transaction_date")
 

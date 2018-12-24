@@ -7,7 +7,7 @@ import org.apache.spark.sql.SparkSession
 /**
   * ETH Token Everyday transaction by lucas 20181124
   */
-object StageETHTokenTransaction {
+object StageETHTokenTransactionWeek {
 
   var readStageDatabase, readLogsTableName, readReceiptTableName, readTraceTableName, readDmDatabase,
   readDmTokenAddressTableName, readDmTokenPriceTableName, writeDataBase, writeTableName, transactionDate: String = _
@@ -15,16 +15,16 @@ object StageETHTokenTransaction {
   def main(args: Array[String]): Unit = {
     val spark = SparkSession.builder().enableHiveSupport().getOrCreate()
 
-    readStageDatabase = spark.sparkContext.getConf.get("spark.dwdETHTokenTransaction.readStageDatabase")
-    readLogsTableName = spark.sparkContext.getConf.get("spark.dwdETHTokenTransaction.readLogsTableName")
-    readReceiptTableName = spark.sparkContext.getConf.get("spark.dwdETHTokenTransaction.readReceiptTableName")
-    readTraceTableName = spark.sparkContext.getConf.get("spark.dwdETHTokenTransaction.readTraceTableName")
-    readDmDatabase = spark.sparkContext.getConf.get("spark.dwdETHTokenTransaction.readDmDatabase")
-    readDmTokenAddressTableName = spark.sparkContext.getConf.get("spark.dwdETHTokenTransaction.readDmTokenTableName")
-    readDmTokenPriceTableName = spark.sparkContext.getConf.get("spark.dwdETHTokenTransaction.readDmTokenPriceTableName")
-    writeDataBase = spark.sparkContext.getConf.get("spark.dwdETHTokenTransaction.writeDataBase")
-    writeTableName = spark.sparkContext.getConf.get("spark.dwdETHTokenTransaction.writeTableName")
-    transactionDate = spark.sparkContext.getConf.get("spark.dwdETHTokenTransaction.transactionDate")
+    readStageDatabase = spark.sparkContext.getConf.get("spark.stageETHTokenTransactionWeek.readStageDatabase")
+    readLogsTableName = spark.sparkContext.getConf.get("spark.stageETHTokenTransactionWeek.readLogsTableName")
+    readReceiptTableName = spark.sparkContext.getConf.get("spark.stageETHTokenTransactionWeek.readReceiptTableName")
+    readTraceTableName = spark.sparkContext.getConf.get("spark.stageETHTokenTransactionWeek.readTraceTableName")
+    readDmDatabase = spark.sparkContext.getConf.get("spark.stageETHTokenTransactionWeek.readDmDatabase")
+    readDmTokenAddressTableName = spark.sparkContext.getConf.get("spark.stageETHTokenTransactionWeek.readDmTokenTableName")
+    readDmTokenPriceTableName = spark.sparkContext.getConf.get("spark.stageETHTokenTransactionWeek.readDmTokenPriceTableName")
+    writeDataBase = spark.sparkContext.getConf.get("spark.stageETHTokenTransactionWeek.writeDataBase")
+    writeTableName = spark.sparkContext.getConf.get("spark.stageETHTokenTransactionWeek.writeTableName")
+    transactionDate = spark.sparkContext.getConf.get("spark.stageETHTokenTransactionWeek.transactionDate")
 
     getStageETHTokenTransaction(spark)
 
@@ -37,6 +37,7 @@ object StageETHTokenTransaction {
     val prefixPath = CommonConstant.outputRootDir
     val tmpPath = CommonConstant.getTmpPath(writeDataBase, writeTableName, System.currentTimeMillis().toString)
     val targetPath = CommonConstant.getTargetPath(writeDataBase, writeTableName)
+    val beforeDate = DateTransform.getBeforeDate(transactionDate, CommonConstant.FormatDay, -3)
 
     if (tmpPath == null || targetPath == null) {
       PerfLogging.error("临时目录或者目标目录为 Null")
@@ -50,7 +51,7 @@ object StageETHTokenTransaction {
       *
       */
     spark.read.table(s"${readStageDatabase}.${readLogsTableName}")
-      .where(s" transaction_date = '${transactionDate}' and logs_address != '' and logs_topics_one = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef' " +
+      .where(s" transaction_date >= '${beforeDate}' and logs_address != '' and logs_topics_one = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef' " +
         s" and size(split(logs_topics,',')) > 2 and logs_address in (select address from ${readDmDatabase}.${readDmTokenAddressTableName}) ")
       .select("block_number", "logs_address", "logs_topics", "logs_data",
         "logs_transaction_index", "logs_transaction_hash", "date_time", "transaction_date")
@@ -71,12 +72,12 @@ object StageETHTokenTransaction {
       "logs_transaction_index", "logs_transaction_hash", "date_time", "transaction_date").createTempView("logs")
 
     spark.read.table(s"${readStageDatabase}.${readReceiptTableName}")
-      .where(s" receipt_status != 'false' and transaction_date = '${transactionDate}' ")
+      .where(s" receipt_status != 'false' and transaction_date >= '${beforeDate}' ")
       .select("block_number", "receipt_transaction_index", "receipt_transaction_hash", "transaction_date")
       .createTempView("receipt")
 
     spark.read.table(s"${readStageDatabase}.${readTraceTableName}")
-      .where(s" trace_error = '' and transaction_date = '${transactionDate}' ")
+      .where(s" trace_error = '' and transaction_date >= '${beforeDate}' ")
       .select("block_number", "trace_transaction_index", "trace_transaction_hash", "transaction_date")
       .rdd.map(x => {
       val block_number = x.get(0).toString
@@ -91,7 +92,7 @@ object StageETHTokenTransaction {
     val targetDF = spark.sql(
       s"""
          |
-        |select
+         |select
          |    t1.block_number, t1.from_address, t1.to_address, t4.decimals, t1.value, nvl(t5.price_us,'') as price_us,
          |    t1.logs_transaction_index, t1.logs_transaction_hash, t1.date_time, t4.id as token_id, t4.token_symbol,
          |    t1.logs_address as token_address, t1.transaction_date
@@ -109,7 +110,7 @@ object StageETHTokenTransaction {
          |on
          |    t1.logs_address = t4.address
          |left join
-         |    (select id, price_us, transaction_date from ${readDmDatabase}.${readDmTokenPriceTableName} where transaction_date = '${transactionDate}' ) t5
+         |    (select id, price_us, transaction_date from ${readDmDatabase}.${readDmTokenPriceTableName} where transaction_date >= '${beforeDate}' ) t5
          |on
          |    t1.transaction_date = t5.transaction_date and t4.id = t5.id
          |where

@@ -68,12 +68,15 @@ object DwdETHTokenTransaction {
       val transaction_date = x.get(7).toString
       (block_number, logs_address, from_address, to_address, value, logs_transaction_index, logs_transaction_hash, date_time, transaction_date)
     }).toDF("block_number", "logs_address", "from_address", "to_address", "value",
-      "logs_transaction_index", "logs_transaction_hash", "date_time", "transaction_date").createTempView("logs")
+      "logs_transaction_index", "logs_transaction_hash", "date_time", "transaction_date")
+      .createTempView("logs")
+    spark.sql("select * from logs").show()
 
     spark.read.table(s"${readOdsDatabase}.${readReceiptTableName}")
       .where(s" receipt_status != 'false' ")
       .select("block_number", "receipt_transaction_index", "receipt_transaction_hash", "transaction_date")
       .createTempView("receipt")
+    spark.sql("select * from receipt").show()
 
     spark.read.table(s"${readOdsDatabase}.${readTraceTableName}")
       .where(s" trace_error = '' ")
@@ -87,11 +90,12 @@ object DwdETHTokenTransaction {
       (block_number, trace_transaction_index, trace_transaction_hash, transaction_date)
     }).toDF("block_number", "trace_transaction_index", "trace_transaction_hash", "transaction_date")
       .createTempView("trace")
+    spark.sql("select * from trace").show()
 
     val targetDF = spark.sql(
       s"""
          |
-        |select
+         |select
          |    t1.block_number, t1.from_address, t1.to_address, t4.decimals, t1.value, nvl(t5.price_us,'') as price_us,
          |    t1.logs_transaction_index, t1.logs_transaction_hash, t1.date_time, t4.id as token_id, t4.token_symbol,
          |    t1.logs_address as token_address, t1.transaction_date
@@ -109,7 +113,7 @@ object DwdETHTokenTransaction {
          |on
          |    t1.logs_address = t4.address
          |left join
-         |    (select id, price_us, transaction_date from ${readDmDatabase}.${readDmTokenPriceTableName} ' ) t5
+         |    (select id, price_us, transaction_date from ${readDmDatabase}.${readDmTokenPriceTableName} ) t5
          |on
          |    t1.transaction_date = t5.transaction_date and t4.id = t5.id
          |where

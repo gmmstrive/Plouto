@@ -2,13 +2,13 @@ package com.gikee.eth.stage
 
 import com.alibaba.fastjson.{JSON, JSONArray, JSONObject}
 import com.gikee.common.{CommonConstant, PerfLogging}
-import com.gikee.util.{ParsingJson, TableUtil}
+import com.gikee.util.{DateTransform, ParsingJson, TableUtil}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /**
   * eth calls info by lucas 20181122
   */
-object StageETHCalls {
+object StageETHCallsWeek {
 
   var readStageDataBase, readStageTableName, writeDataBase, writeTableName, transactionDate: String = _
 
@@ -16,19 +16,19 @@ object StageETHCalls {
 
     val spark = SparkSession.builder().enableHiveSupport().getOrCreate()
 
-    readStageDataBase = spark.sparkContext.getConf.get("spark.stageETHCalls.readStageDataBase")
-    readStageTableName = spark.sparkContext.getConf.get("spark.stageETHCalls.readStageTableName")
-    writeDataBase = spark.sparkContext.getConf.get("spark.stageETHCalls.writeDataBase")
-    writeTableName = spark.sparkContext.getConf.get("spark.stageETHCalls.writeTableName")
-    transactionDate = spark.sparkContext.getConf.get("spark.stageETHCalls.transactionDate")
+    readStageDataBase = spark.sparkContext.getConf.get("spark.stageETHCallsWeek.readStageDataBase")
+    readStageTableName = spark.sparkContext.getConf.get("spark.stageETHCallsWeek.readStageTableName")
+    writeDataBase = spark.sparkContext.getConf.get("spark.stageETHCallsWeek.writeDataBase")
+    writeTableName = spark.sparkContext.getConf.get("spark.stageETHCallsWeek.writeTableName")
+    transactionDate = spark.sparkContext.getConf.get("spark.stageETHCallsWeek.transactionDate")
 
-    getStageETHCalls(spark)
+    getStageETHCallsWeek(spark)
 
     spark.stop()
 
   }
 
-  def getStageETHCalls(spark: SparkSession): Unit = {
+  def getStageETHCallsWeek(spark: SparkSession): Unit = {
 
     val prefixPath = CommonConstant.outputRootDir
     val tmpPath = CommonConstant.getTmpPath(writeDataBase, writeTableName, System.currentTimeMillis().toString)
@@ -41,7 +41,8 @@ object StageETHCalls {
     }
 
     if (transactionDate != "") {
-      tempDF = spark.read.table(s"${readStageDataBase}.${readStageTableName}").where(s" transaction_date = '${transactionDate}' ")
+      val beforeDate = DateTransform.getBeforeDate(transactionDate, CommonConstant.FormatDay, -2)
+      tempDF = spark.read.table(s"${readStageDataBase}.${readStageTableName}").where(s" transaction_date >= '${beforeDate}' ")
     } else {
       tempDF = spark.read.table(s"${readStageDataBase}.${readStageTableName}")
     }

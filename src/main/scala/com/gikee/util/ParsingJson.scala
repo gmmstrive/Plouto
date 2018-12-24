@@ -47,12 +47,13 @@ object ParsingJson {
     * @param colName
     * @return
     */
-  def getStrDate(json: JSONObject, colName: String): (String, String, String, String, String) = {
+  def getStrDate(json: JSONObject, colName: String): (String, String, String, String, String, String) = {
     var dateTime = ""
     var annual = ""
     var monthly = ""
     var everyday = ""
     var transaction_date = ""
+    var dh = ""
     val date = getStrTrim(json, colName)
     if (date != "") {
       dateTime = DateTransform.getLong2date(date, CommonConstant.FormatDate)
@@ -60,8 +61,9 @@ object ParsingJson {
       monthly = DateTransform.getDate2Detailed(dateTime)._2
       everyday = DateTransform.getDate2Detailed(dateTime)._3
       transaction_date = DateTransform.getDate2Detailed(dateTime)._4
+      dh = DateTransform.getDate2Detailed(dateTime)._5
     }
-    (dateTime, annual, monthly, everyday, transaction_date)
+    (dateTime, annual, monthly, everyday, transaction_date, dh)
   }
 
 }

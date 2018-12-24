@@ -29,6 +29,13 @@ object TableUtil {
     FileExchange.dataMovement(spark, prefixPath, tmpPath, targetPath)
   }
 
+  def writeDataStreams(spark: SparkSession, df: DataFrame, prefixPath: String, tmpPath: String, targetPath: String,
+                      partition_1: String): Unit = {
+    df.repartition(3).write.partitionBy(partition_1)
+      .mode(SaveMode.Overwrite).format("parquet").save(prefixPath + tmpPath)
+    FileExchange.dataMovement(spark, prefixPath, tmpPath, targetPath)
+  }
+
   def writeDataStream(spark: SparkSession, df: DataFrame, prefixPath: String, tmpPath: String, targetPath: String,
                       partition_1: String, partition_2: String): Unit = {
     df.repartition(1).write.partitionBy(partition_1, partition_2)
@@ -43,7 +50,7 @@ object TableUtil {
     FileExchange.dataMovement(spark, prefixPath, tmpPath, targetPath)
   }
 
-  def writeDataStreams(spark: SparkSession, df: DataFrame, prefixPath: String, tmpPath: String, targetPath: String,
+  def writeDataStream(spark: SparkSession, df: DataFrame, prefixPath: String, tmpPath: String, targetPath: String,
                        partition_1: String, partition_2: String, partition_3: String, partition_4: String): Unit = {
     df.repartition(1).write.partitionBy(partition_1, partition_2, partition_3, partition_4)
       .mode(SaveMode.Overwrite).format("parquet").save(prefixPath + tmpPath)
@@ -120,8 +127,8 @@ object TableUtil {
     val filePathArray = fileSystem.listStatus(new Path(partitionFilePath))
 
     for (file <- filePathArray) {
-      if(!"_SUCCESS".equals(file.getPath.getName)){
-        fileSystem.rename(file.getPath,new Path(s"${file.getPath.getParent.toString}/partition.sh"))
+      if (!"_SUCCESS".equals(file.getPath.getName)) {
+        fileSystem.rename(file.getPath, new Path(s"${file.getPath.getParent.toString}/partition.sh"))
       }
     }
 

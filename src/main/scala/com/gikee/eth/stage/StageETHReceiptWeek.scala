@@ -2,13 +2,13 @@ package com.gikee.eth.stage
 
 import com.alibaba.fastjson.{JSON, JSONObject}
 import com.gikee.common.{CommonConstant, PerfLogging}
-import com.gikee.util.{ParsingJson, TableUtil}
+import com.gikee.util.{DateTransform, ParsingJson, TableUtil}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /**
   * eth receipt info by lucas 20181122
   */
-object StageETHReceipt {
+object StageETHReceiptWeek {
 
   var readStageDataBase, readStageTableName, writeDataBase, writeTableName, transactionDate: String = _
 
@@ -16,19 +16,19 @@ object StageETHReceipt {
 
     val spark = SparkSession.builder().enableHiveSupport().getOrCreate()
 
-    readStageDataBase = spark.sparkContext.getConf.get("spark.stageETHReceipt.readStageDataBase")
-    readStageTableName = spark.sparkContext.getConf.get("spark.stageETHReceipt.readStageTableName")
-    writeDataBase = spark.sparkContext.getConf.get("spark.stageETHReceipt.writeDataBase")
-    writeTableName = spark.sparkContext.getConf.get("spark.stageETHReceipt.writeTableName")
-    transactionDate = spark.sparkContext.getConf.get("spark.stageETHReceipt.transactionDate")
+    readStageDataBase = spark.sparkContext.getConf.get("spark.stageETHReceiptWeek.readStageDataBase")
+    readStageTableName = spark.sparkContext.getConf.get("spark.stageETHReceiptWeek.readStageTableName")
+    writeDataBase = spark.sparkContext.getConf.get("spark.stageETHReceiptWeek.writeDataBase")
+    writeTableName = spark.sparkContext.getConf.get("spark.stageETHReceiptWeek.writeTableName")
+    transactionDate = spark.sparkContext.getConf.get("spark.stageETHReceiptWeek.transactionDate")
 
-    getStageETHReceipt(spark)
+    getStageETHReceiptWeek(spark)
 
     spark.stop()
 
   }
 
-  def getStageETHReceipt(spark: SparkSession): Unit = {
+  def getStageETHReceiptWeek(spark: SparkSession): Unit = {
 
     val prefixPath = CommonConstant.outputRootDir
     val tmpPath = CommonConstant.getTmpPath(writeDataBase, writeTableName, System.currentTimeMillis().toString)
@@ -41,7 +41,8 @@ object StageETHReceipt {
     }
 
     if (transactionDate != "") {
-      tempDF = spark.read.table(s"${readStageDataBase}.${readStageTableName}").where(s" transaction_date = '${transactionDate}' ")
+      val beforeDate = DateTransform.getBeforeDate(transactionDate, CommonConstant.FormatDay, -2)
+      tempDF = spark.read.table(s"${readStageDataBase}.${readStageTableName}").where(s" transaction_date >= '${beforeDate}' ")
     } else {
       tempDF = spark.read.table(s"${readStageDataBase}.${readStageTableName}")
     }

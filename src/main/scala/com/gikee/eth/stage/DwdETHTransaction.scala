@@ -1,7 +1,7 @@
-package com.gikee.eth.dwd
+package com.gikee.eth.stage
 
 import com.gikee.common.{CommonConstant, PerfLogging}
-import com.gikee.util.{ProcessingString, TableUtil}
+import com.gikee.util.{DateTransform, ProcessingString, TableUtil}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions._
 
@@ -11,7 +11,7 @@ import org.apache.spark.sql.functions._
 object DwdETHTransaction {
 
   var readOdsDataBase, readBlockTableName, readBaseTableName, readTraceTableName, readCallsTableName, readUnclesTableName, readDmDataBase, readPriceTableName,
-  writeDataBase, writeTableName,transaction_date: String = _
+  writeDataBase, writeTableName, transaction_date: String = _
 
   def main(args: Array[String]): Unit = {
 
@@ -69,7 +69,7 @@ object DwdETHTransaction {
     }).toDF("block_number", "service_charge").createTempView("base_charge")
 
     /**
-      * 叔块挖出者奖励
+      * 叔块挖出者奖励 //if (BigDecimal(block_number) >= 4370000) 3 else 5
       */
     spark.read.table(s"${readOdsDataBase}.${readUnclesTableName}").where(s" transaction_date = '${transaction_date}' ")
       .select("block_number", "uncles_miner", "uncles_number", "date_time", "transaction_date").map(x => {
@@ -83,21 +83,23 @@ object DwdETHTransaction {
       val transaction_hash = ""
       val transaction_type = "uncles"
       val value = ((BigDecimal(uncles_number) + 8 - BigDecimal(block_number)) *
-        (if (BigDecimal(block_number) >= 4370000) 3 else 5) / 8).bigDecimal.toPlainString
+        (if (BigDecimal(block_number) <= 7080000) { if (BigDecimal(block_number) >= 4370000) 3 else 5 } else { 2 }) / 8).bigDecimal.toPlainString
       (block_number, from_address, to_address, value, transaction_index, transaction_hash, date_time, transaction_type, transaction_date)
     }).toDF("block_number", "from_address", "to_address", "value", "transaction_index", "transaction_hash", "date_time",
       "transaction_type", "transaction_date").createTempView("uncles_reward")
 
+    // if(cast(t1.block_number as double) <= 7080000,if (cast(t1.block_number as double) >= 4370000,3, 5),2)
+    // if(cast(t1.block_number as double) >= 4370000,3,5)
     val rewardDF = spark.sql(
       s"""
          |select
          |    t1.block_number, '0x^0' as from_address, t1.to_address,
-         |    if(cast(t1.block_number as double) >= 4370000,3,5) + if(t2.block_number is null,0,if(cast(t1.block_number as double) >= 4370000,3,5) * 0.03125 * t2.block_count) + if(t3.block_number is null,0,t3.service_charge) as value,
+         |    if(cast(t1.block_number as double) <= 7080000,if (cast(t1.block_number as double) >= 4370000,3, 5),2) + if(t2.block_number is null,0,if(cast(t1.block_number as double) <= 7080000,if (cast(t1.block_number as double) >= 4370000,3, 5),2) * 0.03125 * t2.block_count) + if(t3.block_number is null,0,t3.service_charge) as value,
          |    '' as transaction_index, '' as transaction_hash, t1.date_time, 'reward_charge' as transaction_type, t1.transaction_date
          |from
-         |(select block_number, miner as to_address, date_time, transaction_date from ${readOdsDataBase}.${readBlockTableName}) t1
+         |(select block_number, miner as to_address, date_time, transaction_date from ${readOdsDataBase}.${readBlockTableName} where transaction_date = '${transaction_date}' ) t1
          |left join
-         |    (select count(1) as block_count, block_number from ${readOdsDataBase}.${readUnclesTableName} group by block_number) t2
+         |    (select count(1) as block_count, block_number from ${readOdsDataBase}.${readUnclesTableName}  where transaction_date = '${transaction_date}' group by block_number) t2
          |on
          |    t1.block_number= t2.block_number
          |left join
@@ -111,7 +113,8 @@ object DwdETHTransaction {
     /**
       * 外部交易
       */
-    val traceDF = spark.read.table(s"${readOdsDataBase}.${readTraceTableName}").where(s"trace_error = '' and trace_from != '' and trace_to != '' and transaction_date = '${transaction_date}' ")
+    val traceDF = spark.read.table(s"${readOdsDataBase}.${readTraceTableName}")
+      .where(s"trace_error = '' and trace_from != '' and trace_to != '' and transaction_date = '${transaction_date}' ")
       .select("block_number", "trace_from", "trace_to", "trace_value", "trace_transaction_index", "trace_transaction_hash",
         "date_time", "transaction_date").rdd.map(x => {
       val block_number = x.get(0).toString
@@ -134,7 +137,8 @@ object DwdETHTransaction {
     /**
       * 内部交易
       */
-    val callsDF = spark.read.table(s"${readOdsDataBase}.${readCallsTableName}").where(s" calls_error = '' and calls_from != '' and calls_to != '' and transaction_date = '${transaction_date}' ")
+    val callsDF = spark.read.table(s"${readOdsDataBase}.${readCallsTableName}")
+      .where(s" calls_error = '' and calls_from != '' and calls_to != '' and transaction_date = '${transaction_date}' ")
       .select("block_number", "calls_from", "calls_to", "calls_value", "calls_transaction_index", "calls_transaction_hash",
         "date_time", "transaction_date").rdd.map(x => {
       val block_number = x.get(0).toString
@@ -179,13 +183,14 @@ object DwdETHTransaction {
       val transaction_index = x.get(5).toString
       val transaction_hash = x.get(6).toString
       val date_time = x.get(7).toString
+      val dh = DateTransform.getDate2Detailed(date_time)._5
       val transaction_type = x.get(8).toString
       val transaction_date = x.get(9).toString
       var amount = ""
       if (price_us != "" && value != "") amount = (BigDecimal(value) * BigDecimal(price_us)).bigDecimal.toPlainString
-      (block_number, from_address, to_address, value, price_us, amount, transaction_index, transaction_hash, date_time, transaction_type, transaction_date)
+      (block_number, from_address, to_address, value, price_us, amount, transaction_index, transaction_hash, dh, date_time, transaction_type, transaction_date)
     }).toDF("block_number", "from_address", "to_address", "value", "price_us", "amount", "transaction_index", "transaction_hash",
-      "date_time", "transaction_type", "transaction_date").sortWithinPartitions("transaction_date")
+      "dh", "date_time", "transaction_type", "transaction_date").sortWithinPartitions("transaction_date")
 
     TableUtil.writeDataStream(spark, targetDF, prefixPath, tmpPath, targetPath, "transaction_date")
     TableUtil.refreshPartition(spark, targetDF, writeDataBase, writeTableName, "transaction_date")

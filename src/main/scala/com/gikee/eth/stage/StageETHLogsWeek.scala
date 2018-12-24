@@ -2,13 +2,13 @@ package com.gikee.eth.stage
 
 import com.alibaba.fastjson.{JSON, JSONObject}
 import com.gikee.common.{CommonConstant, PerfLogging}
-import com.gikee.util.{ParsingJson, TableUtil}
+import com.gikee.util.{DateTransform, ParsingJson, TableUtil}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 
 /**
   * eth log info by lucas 20181122
   */
-object StageETHLogs {
+object StageETHLogsWeek {
 
   var readStageDataBase, readStageTableName, writeDataBase, writeTableName, transactionDate: String = _
 
@@ -16,19 +16,19 @@ object StageETHLogs {
 
     val spark = SparkSession.builder().enableHiveSupport().getOrCreate()
 
-    readStageDataBase = spark.sparkContext.getConf.get("spark.stageETHLogs.readStageDataBase")
-    readStageTableName = spark.sparkContext.getConf.get("spark.stageETHLogs.readStageTableName")
-    writeDataBase = spark.sparkContext.getConf.get("spark.stageETHLogs.writeDataBase")
-    writeTableName = spark.sparkContext.getConf.get("spark.stageETHLogs.writeTableName")
-    transactionDate = spark.sparkContext.getConf.get("spark.stageETHLogs.transactionDate")
+    readStageDataBase = spark.sparkContext.getConf.get("spark.stageETHLogsWeek.readStageDataBase")
+    readStageTableName = spark.sparkContext.getConf.get("spark.stageETHLogsWeek.readStageTableName")
+    writeDataBase = spark.sparkContext.getConf.get("spark.stageETHLogsWeek.writeDataBase")
+    writeTableName = spark.sparkContext.getConf.get("spark.stageETHLogsWeek.writeTableName")
+    transactionDate = spark.sparkContext.getConf.get("spark.stageETHLogsWeek.transactionDate")
 
-    getStageETHLogs(spark)
+    getStageETHLogsWeek(spark)
 
     spark.stop()
 
   }
 
-  def getStageETHLogs(spark: SparkSession): Unit = {
+  def getStageETHLogsWeek(spark: SparkSession): Unit = {
 
     val prefixPath = CommonConstant.outputRootDir
     val tmpPath = CommonConstant.getTmpPath(writeDataBase, writeTableName, System.currentTimeMillis().toString)
@@ -41,7 +41,8 @@ object StageETHLogs {
     }
 
     if (transactionDate != "") {
-      tempDF = spark.read.table(s"${readStageDataBase}.${readStageTableName}").where(s" transaction_date = '${transactionDate}' ")
+      val beforeDate = DateTransform.getBeforeDate(transactionDate, CommonConstant.FormatDay, -2)
+      tempDF = spark.read.table(s"${readStageDataBase}.${readStageTableName}").where(s" transaction_date >= '${beforeDate}' ")
     } else {
       tempDF = spark.read.table(s"${readStageDataBase}.${readStageTableName}")
     }
@@ -68,12 +69,14 @@ object StageETHLogs {
     }).filter(_ != null).flatMap(_.toArray).map(_.asInstanceOf[JSONObject]).map(x => {
       val receipt = x.getJSONObject("receipt")
       val transaction_date = ParsingJson.getStrTrim(x, "transaction_date")
+      val dh = ParsingJson.getStrTrim(x, "dh")
       val date_time = ParsingJson.getStrTrim(x, "date_time")
       val logs = ParsingJson.getStrArray(receipt, "logs")
 
       if (logs != null) {
         for (i <- 0 until logs.size()) {
           logs.getJSONObject(i).put("transaction_date", transaction_date)
+          logs.getJSONObject(i).put("dh", dh)
           logs.getJSONObject(i).put("date_time", date_time)
         }
       }
