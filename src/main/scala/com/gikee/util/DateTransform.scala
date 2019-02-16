@@ -63,10 +63,13 @@ object DateTransform {
   }
 
   def main(args: Array[String]): Unit = {
-
-    println(
-      if (BigDecimal("7080001") <= 7080000) { if (BigDecimal("7080001") >= 4370000) 3 else 5 } else { 2 }
-    )
+    val beforeDate_3 = DateTransform.getBeforeDate(DateTransform.getUTCDate(CommonConstant.FormatDay), CommonConstant.FormatDay, -3)
+    val beforeDate_2 = DateTransform.getBeforeDate(DateTransform.getUTCDate(CommonConstant.FormatDay), CommonConstant.FormatDay, -2)
+    val beforeDate_1 = DateTransform.getBeforeDate(DateTransform.getUTCDate(CommonConstant.FormatDay), CommonConstant.FormatDay, -1)
+    println(DateTransform.getUTCDate(CommonConstant.FormatDay))
+    println(beforeDate_1)
+    println(beforeDate_2)
+    println(beforeDate_3)
 
   }
 

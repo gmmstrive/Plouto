@@ -54,9 +54,6 @@ object TempETHSourceExtract {
       (infoJson.toJSONString, block_number, date_time, dir, transaction_date)
     }).toDF("info", "block_number", "date_time", "dir", "transaction_date").repartition(10)
 
-//    targetDF.repartition(1).write.mode(SaveMode.Append).format("parquet")
-//      .insertInto(s"${writeDataBase}.${writeTableName}")
-
     TableUtil.writeDataStream(spark, targetDF, prefixPath, tmpPath, targetPath, "dir", "transaction_date")
     TableUtil.refreshPartition(spark, targetDF, writeDataBase, writeTableName, "dir", "transaction_date")
 

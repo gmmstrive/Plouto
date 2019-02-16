@@ -41,7 +41,7 @@ object StageETHCallsWeek {
     }
 
     if (transactionDate != "") {
-      val beforeDate = DateTransform.getBeforeDate(transactionDate, CommonConstant.FormatDay, -2)
+      val beforeDate = DateTransform.getBeforeDate(transactionDate, CommonConstant.FormatDay, -1)
       tempDF = spark.read.table(s"${readStageDataBase}.${readStageTableName}").where(s" transaction_date >= '${beforeDate}' ")
     } else {
       tempDF = spark.read.table(s"${readStageDataBase}.${readStageTableName}")

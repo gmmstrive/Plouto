@@ -1,7 +1,7 @@
 package com.gikee.eth.token.dwd
 
 import com.gikee.common.{CommonConstant, PerfLogging}
-import com.gikee.util.TableUtil
+import com.gikee.util.{DateTransform, TableUtil}
 import org.apache.spark.sql.SparkSession
 
 /**
@@ -73,7 +73,7 @@ object DwdETHTokenToAddress {
          |        t1.rk = 1
          |) t1
          |left join
-         |    (select customer_address,token_address from ${writeDataBase}.${writeTableName}) t2
+         |    (select customer_address,token_address from ${writeDataBase}.${writeTableName} where transaction_date < '${transactionDate}') t2
          |on
          |    t1.customer_address = t2.customer_address and t1.token_address = t2.token_address
          |where

@@ -32,7 +32,8 @@ object StageETHSourceStream {
     val tmpPath = CommonConstant.getTmpPath(writeDataBase, writeTableName, System.currentTimeMillis().toString)
     val targetPath = CommonConstant.getTargetPath(writeDataBase, writeTableName)
 
-    val beforeDate = DateTransform.getBeforeDate(DateTransform.getUTCDate(CommonConstant.FormatDay), CommonConstant.FormatDay, -3)
+    val beforeDate_1 = DateTransform.getBeforeDate(DateTransform.getUTCDate(CommonConstant.FormatDay), CommonConstant.FormatDay, -1)
+    val beforeDate_2 = DateTransform.getBeforeDate(DateTransform.getUTCDate(CommonConstant.FormatDay), CommonConstant.FormatDay, -2)
 
     if (tmpPath == null || targetPath == null) {
       PerfLogging.error("临时目录或者目标目录为 Null")
@@ -41,7 +42,10 @@ object StageETHSourceStream {
 
     import spark.implicits._
 
-    val targetDF = spark.read.textFile(s"${pathPrefix}/*/*/*/*.log")
+    val targetDF =
+    spark.read.textFile(s"${pathPrefix}/local_date=${DateTransform.getUTCDate(CommonConstant.FormatDay)}/*/*/*.log")
+      .union(spark.read.textFile(s"${pathPrefix}/local_date=${beforeDate_2}/*/*/*.log"))
+      .union(spark.read.textFile(s"${pathPrefix}/local_date=${beforeDate_1}/*/*/*.log"))
       .map(x => {
         val infoJson = JSON.parseObject(x.toString)
         val block_number = ParsingJson.getStrTrim(infoJson, "number")
@@ -51,7 +55,7 @@ object StageETHSourceStream {
         val transaction_date = timeTuple._5
         (infoJson.toJSONString, block_number, dh, date_time, transaction_date)
       }).toDF("info", "block_number", "dh", "date_time", "transaction_date")
-      .sortWithinPartitions("transaction_date").where(s" transaction_date >= '${beforeDate}' ")
+      .where(s" transaction_date >= '${beforeDate_1}' ").repartition(100)
 
     TableUtil.writeDataStreams(spark, targetDF, prefixPath, tmpPath, targetPath, "transaction_date")
     TableUtil.refreshPartition(spark, targetDF, writeDataBase, writeTableName, "transaction_date")

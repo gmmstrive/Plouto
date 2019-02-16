@@ -1,10 +1,11 @@
 package com.gikee.eth.token.dw
 
 import com.gikee.common.{CommonConstant, PerfLogging}
-import com.gikee.util.{DateTransform, TableUtil}
+import com.gikee.util.TableUtil
 import org.apache.spark.sql.SparkSession
 
 object DwETHTokenAvgAmountValue {
+
 
   var readDatabase, readTableName, readDmDatabase, readDmTableName, writeDataBase, writeTableName, transactionDate: String = _
 
@@ -46,7 +47,7 @@ object DwETHTokenAvgAmountValue {
          |(select token_address,transaction_date from ${readDmDatabase}.${readDmTableName} where transaction_date = '${transactionDate}' ) t1
          |left join(
          |    select
-         |        (sum(cast(value as double))/count(1)) as value_num, token_address,transaction_date
+         |        (sum(cast(amount as double))/count(1)) as value_num, token_address,transaction_date
          |    from ${readDatabase}.${readTableName} where amount > '0' and transaction_date = '${transactionDate}'
          |    group by
          |        token_address,transaction_date
@@ -65,7 +66,7 @@ object DwETHTokenAvgAmountValue {
          |(select token_address,transaction_date from ${readDmDatabase}.${readDmTableName} ) t1
          |left join(
          |    select
-         |        (sum(cast(value as double))/count(1)) as value_num, token_address,transaction_date
+         |        (sum(cast(amount as double))/count(1)) as value_num, token_address,transaction_date
          |    from ${readDatabase}.${readTableName} where amount > '0'
          |    group by
          |        token_address,transaction_date

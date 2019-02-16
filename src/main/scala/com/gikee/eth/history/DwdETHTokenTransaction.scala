@@ -70,13 +70,11 @@ object DwdETHTokenTransaction {
     }).toDF("block_number", "logs_address", "from_address", "to_address", "value",
       "logs_transaction_index", "logs_transaction_hash", "date_time", "transaction_date")
       .createTempView("logs")
-    spark.sql("select * from logs").show()
 
     spark.read.table(s"${readOdsDatabase}.${readReceiptTableName}")
       .where(s" receipt_status != 'false' ")
       .select("block_number", "receipt_transaction_index", "receipt_transaction_hash", "transaction_date")
       .createTempView("receipt")
-    spark.sql("select * from receipt").show()
 
     spark.read.table(s"${readOdsDatabase}.${readTraceTableName}")
       .where(s" trace_error = '' ")
@@ -90,7 +88,6 @@ object DwdETHTokenTransaction {
       (block_number, trace_transaction_index, trace_transaction_hash, transaction_date)
     }).toDF("block_number", "trace_transaction_index", "trace_transaction_hash", "transaction_date")
       .createTempView("trace")
-    spark.sql("select * from trace").show()
 
     val targetDF = spark.sql(
       s"""

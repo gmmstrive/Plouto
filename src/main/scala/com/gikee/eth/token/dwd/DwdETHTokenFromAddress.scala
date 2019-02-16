@@ -64,7 +64,7 @@ object DwdETHTokenFromAddress {
          |        t1.rk = 1
          |) t1
          |left join
-         |    (select customer_address,token_address from ${writeDataBase}.${writeTableName}) t2
+         |    (select customer_address,token_address from ${writeDataBase}.${writeTableName} ) t2
          |on
          |    t1.customer_address = t2.customer_address and t1.token_address = t2.token_address
          |where

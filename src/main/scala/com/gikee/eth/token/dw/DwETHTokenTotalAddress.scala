@@ -50,7 +50,7 @@ object DwETHTokenTotalAddress {
            |    on
            |        t1.transaction_date = t2.transaction_date and t1.token_address = t2.token_address
            |    union all
-           |    select cast(value_num as bigint) as value_num,token_address,transaction_date from ${readDwdDatabase}.${readDwdETHTokenToAddressTableName} where transaction_date = '${DateTransform.getBeforeDate(transactionDate, CommonConstant.FormatDay, -1)}'
+           |    select cast(value_num as bigint) as value_num,token_address,transaction_date from ${writeDataBase}.${writeTableName} where transaction_date = '${DateTransform.getBeforeDate(transactionDate, CommonConstant.FormatDay, -1)}'
            |)t
            |group by
            |    token_address
