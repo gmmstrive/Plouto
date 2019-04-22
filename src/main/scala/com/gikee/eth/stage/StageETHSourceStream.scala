@@ -43,19 +43,19 @@ object StageETHSourceStream {
     import spark.implicits._
 
     val targetDF =
-    spark.read.textFile(s"${pathPrefix}/local_date=${DateTransform.getUTCDate(CommonConstant.FormatDay)}/*/*/*.log")
-      .union(spark.read.textFile(s"${pathPrefix}/local_date=${beforeDate_2}/*/*/*.log"))
-      .union(spark.read.textFile(s"${pathPrefix}/local_date=${beforeDate_1}/*/*/*.log"))
-      .map(x => {
-        val infoJson = JSON.parseObject(x.toString)
-        val block_number = ParsingJson.getStrTrim(infoJson, "number")
-        val timeTuple = ParsingJson.getStrDate(infoJson, "timestamp")
-        val dh = timeTuple._6
-        val date_time = timeTuple._1
-        val transaction_date = timeTuple._5
-        (infoJson.toJSONString, block_number, dh, date_time, transaction_date)
-      }).toDF("info", "block_number", "dh", "date_time", "transaction_date")
-      .where(s" transaction_date >= '${beforeDate_1}' ").repartition(100)
+      spark.read.textFile(s"${pathPrefix}/local_date=${DateTransform.getUTCDate(CommonConstant.FormatDay)}/*/*/*.log")
+        .union(spark.read.textFile(s"${pathPrefix}/local_date=${beforeDate_2}/*/*/*.log"))
+        .union(spark.read.textFile(s"${pathPrefix}/local_date=${beforeDate_1}/*/*/*.log"))
+        .map(x => {
+          val infoJson = JSON.parseObject(x.toString)
+          val block_number = ParsingJson.getStrTrim(infoJson, "number")
+          val timeTuple = ParsingJson.getStrDate(infoJson, "timestamp")
+          val dh = timeTuple._6
+          val date_time = timeTuple._1
+          val transaction_date = timeTuple._5
+          (infoJson.toJSONString, block_number, dh, date_time, transaction_date)
+        }).toDF("info", "block_number", "dh", "date_time", "transaction_date")
+        .where(s" transaction_date >= '${beforeDate_1}' ").repartition(100)
 
     TableUtil.writeDataStreams(spark, targetDF, prefixPath, tmpPath, targetPath, "transaction_date")
     TableUtil.refreshPartition(spark, targetDF, writeDataBase, writeTableName, "transaction_date")

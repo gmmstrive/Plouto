@@ -31,7 +31,7 @@ object DmETHTokenAddress {
 
     spark.read.format("jdbc")
       .options(Map(
-        "url" -> s"jdbc:mysql://106.14.200.2:3306/${mysqlDataBase}",
+        "url" -> s"jdbc:mysql://106.14.200.2:3307/${mysqlDataBase}",
         "driver" -> "com.mysql.jdbc.Driver",
         "dbtable" -> s"${mysqlTableName}",
         "user" -> "lyjm_data",

@@ -43,7 +43,7 @@ object DmETHTokenPrice {
 
     val targetDF = spark.read.format("jdbc")
       .options(Map(
-        "url" -> s"jdbc:mysql://106.14.200.2:3306/${mysqlDataBase}",
+        "url" -> s"jdbc:mysql://106.14.200.2:3307/${mysqlDataBase}",
         "driver" -> "com.mysql.jdbc.Driver",
         //"dbtable" -> s"${mysqlTableName}",
         "dbtable" -> s"(select id, symbol, priceUs, time from ${mysqlTableName} where time = '${dateTime}' and priceUs > '0.0' ) as coinEverydayInfo",
